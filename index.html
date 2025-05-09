@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D3 Card Testbench</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+      }
+      #card-container {
+        max-width: 600px; /* Or whatever your card's typical width is */
+        margin: 20px auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>D3 Card Testbench</h1>
+
+    <div id="card-container">
+      <!-- The D3 card will be rendered here -->
+    </div>
+
+    <!-- This will load your bundled card code -->
+    <!-- We'll ensure the path is correct based on your rollup config -->
+    <script src="./dist/d3-card.js"></script>
+
+    <script>
+      // Mock Home Assistant object
+      const mockHass = {
+        states: {
+          "sensor.test_temperature": {
+            entity_id: "sensor.test_temperature",
+            state: "25",
+            attributes: {
+              unit_of_measurement: "°C",
+              friendly_name: "Test Temperature",
+            },
+            last_changed: new Date().getTime() / 1000,
+            last_updated: new Date().getTime() / 1000,
+          },
+          "sensor.test_pressure": {
+            entity_id: "sensor.test_pressure",
+            state: "1012",
+            attributes: {
+              unit_of_measurement: "hPa",
+              friendly_name: "Test Pressure",
+            },
+            last_changed: new Date().getTime() / 1000,
+            last_updated: new Date().getTime() / 1000,
+          },
+        },
+        callWS: async (msg) => {
+          console.log("Mock callWS:", msg);
+          if (msg.type === "history/history_during_period") {
+            // Simulate fetching history data
+            const entity_id = msg.entity_ids[0]; // Assuming one entity for simplicity
+            const historyData = generateDummyData(entity_id, 100, 24); // 100 points over last 24 hours
+            console.log("historyData", historyData);
+            return { [entity_id]: historyData };
+          }
+          if (msg.type === "get_states") {
+            // Simulate fetching current states for entities
+            const requestedEntities = mockConfig.series.map((s) => s.entity);
+            const states = {};
+            requestedEntities.forEach((id) => {
+              if (mockHass.states[id]) {
+                states[id] = mockHass.states[id];
+              }
+            });
+            return states; // Note: HA returns an array of state objects
+          }
+          return Promise.resolve({});
+        },
+        localize: (key, ...args) => {
+          let s = key;
+          args.forEach((val, argKey) => {
+            s = s.replace(new RegExp(`{${argKey}}`, "g"), val);
+          });
+          return s || key;
+        },
+        themes: {
+          darkMode: false,
+          "primary-color": "#03a9f4",
+          "text-primary-color": "#212121",
+          // Add other theme variables your card might use
+        },
+        // Add other HASS properties your card might use from D3Card Hass interface
+      };
+
+      // Mock card configuration (what goes into ui-lovelace.yaml)
+      const mockConfig = {
+        type: "custom:d3-card",
+        title: "D3 Test Card",
+        height: "300px", // Example height
+        series: [
+          {
+            entity: "sensor.test_temperature",
+            fetch_history: { span: "24h" }, // Corresponds to D3CardSeriesConfig
+            // transform: 'return value * 2;', // Example transform
+          },
+          {
+            entity: "sensor.test_pressure",
+            fetch_history: { span: "24h" },
+          },
+        ],
+        d3_code: null, // Will be loaded from ./testbench-d3-code.js
+        // Add other configuration properties your card expects based on D3CardConfig
+      };
+
+      // Function to generate dummy data for an entity
+      function generateDummyData(entityId, points = 100, hoursAgo = 24) {
+        const data = [];
+        const now = new Date();
+        for (let i = 0; i < points; i++) {
+          const timestamp = new Date(
+            now.getTime() - (hoursAgo / points) * i * 3600 * 1000,
+          );
+          let state;
+          if (entityId.includes("temperature")) {
+            state = (20 + Math.random() * 10).toFixed(1); // e.g., 20.0 to 30.0
+          } else if (entityId.includes("humidity")) {
+            state = (40 + Math.random() * 30).toFixed(0); // e.g., 40 to 70
+          } else {
+            state = (Math.random() * 100).toFixed(0);
+          }
+          data.unshift({
+            s: state,
+            lu: timestamp.getTime() / 1000,
+          });
+        }
+        return data;
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const cardContainer = document.getElementById("card-container");
+
+        try {
+          // Fetch the external D3 code
+          const response = await fetch("./testbench-d3-code.js");
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch testbench-d3-code.js: ${response.statusText}`,
+            );
+          }
+          mockConfig.d3_code = await response.text();
+          console.log("Successfully loaded D3 code from external file.");
+
+          // Instantiate the card
+          if (customElements.get("d3-card")) {
+            const cardElement = document.createElement("d3-card");
+
+            // Set configuration
+            // The D3Card class has a setConfig method
+            cardElement.setConfig(mockConfig);
+
+            // Set hass object
+            // The D3Card class has a 'hass' setter
+            cardElement.hass = mockHass;
+
+            // Append the card to the container
+            cardContainer.appendChild(cardElement);
+
+            console.log("d3-card instantiated and configured.", cardElement);
+
+            // You can later update hass or config and it should re-render if the card is designed to do so
+            // For example, to simulate a state change:
+            // setTimeout(() => {
+            //     console.log('Simulating state change...');
+            //     const newMockHass = JSON.parse(JSON.stringify(mockHass)); // Deep clone
+            //     newMockHass.states['sensor.test_temperature'].state = (Math.random() * 10 + 20).toFixed(1);
+            //     newMockHass.states['sensor.test_temperature'].last_updated = new Date().toISOString();
+            //     cardElement.hass = newMockHass; // This should trigger the 'set hass' in your card
+            // }, 5000);
+          } else {
+            cardContainer.innerHTML =
+              '<p>Error: <code>d3-card</code> custom element not defined. Make sure it is registered (customElements.define("d3-card", D3Card)) and the script (./dist/d3-card.js) is loaded correctly.</p>';
+            console.error(
+              "'d3-card' custom element not defined. Check your card's registration logic in d3-card.ts and the script path in index.html.",
+            );
+          }
+        } catch (error) {
+          console.error("Error setting up D3 card testbench:", error);
+          cardContainer.innerHTML = `<p>Error loading D3 code or initializing card: ${error.message}. Check console for details.</p>`;
+        }
+      });
+    </script>
+  </body>
+</html>
