@@ -718,7 +718,7 @@ export class GraphEntry {
       return [];
     }
     const callArgs = {
-      type: "recorder/get_statistics_during_period",
+      type: "recorder/statistics_during_period",
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       statistic_ids: [this._entityID], // This assumes _entityID is a valid statistic_id
