@@ -165,3 +165,18 @@ export function createLineGenerator(
 export function getDefaultColorScale(): d3.ScaleOrdinal<string, string, never> {
   return d3.scaleOrdinal(d3.schemeCategory10);
 }
+
+export function makeElement(
+  selection: any,
+  childElemType: string,
+  childClass: string,
+  update: Function,
+) {
+  selection
+    .selectAll(`.${childClass}`)
+    .data([null])
+    .join(
+      (enter) => enter.append(childElemType).attr("class", childClass),
+      update,
+    );
+}

@@ -699,19 +699,12 @@ export class GraphEntry {
       // significant_changes_only: true can be used, but for charting often all points are better
       const historyData = await this._hass.callWS<{
         [entityId: string]: HistoryState[];
-      }>({
-        type: "history/history_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        entity_ids: [this._entityID],
-        minimal_response: !this._config.attribute, // if attribute needed, get full response for this entity
-        no_attributes: !this._config.attribute, // if attribute needed, get attributes
-        significant_changes_only: skipInitialState, // Approximation
-      });
+      }>(callArgs);
       return historyData && historyData[this._entityID]
         ? historyData[this._entityID]
         : [];
     } catch (err) {
+      console.log("history/history_during_period error:", err);
       return [];
     }
   }

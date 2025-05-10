@@ -289,6 +289,7 @@ class D3Card extends HTMLElement {
       drawYAxis: d3util.drawYAxis,
       createLineGenerator: d3util.createLineGenerator,
       getDefaultColorScale: d3util.getDefaultColorScale,
+      makeElement: d3util.makeElement,
       alignSeries: alignSeries,
     };
 
