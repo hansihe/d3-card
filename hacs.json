@@ -1,9 +1,5 @@
 {
   "name": "D3 Card",
-  "render_readme": true,
-  "filename": "src/d3-card.js",
-  "content_in_root": false,
-  "country": "US",
-  "domains": ["sensor", "binary_sensor"],
-  "iot_class": "local_polling"
+  "render_readme": false,
+  "homeassistant": "2024.4.0b0"
 }
