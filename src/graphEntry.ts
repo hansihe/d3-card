@@ -709,6 +709,44 @@ export class GraphEntry {
     }
   }
 
+  private async _fetchStatistics(
+    start: Date,
+    end: Date,
+    period: string,
+  ): Promise<StatisticValue[]> {
+    if (!this._hass || !this._entityID) {
+      return [];
+    }
+    const callArgs = {
+      type: "recorder/get_statistics_during_period",
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      statistic_ids: [this._entityID], // This assumes _entityID is a valid statistic_id
+      period: period as any, // 'hour', 'day', 'month', '5minute'
+    };
+    try {
+      // First, get all statistic_ids to find the one matching our entity.
+      // This step can be skipped if we construct the statistic_id directly (e.g. sensor.energy_usage -> sensor.energy_usage_mean_statistics)
+      // However, the exact statistic_id format can vary.
+      // For simplicity, we'll assume the consumer of GraphEntry knows the correct statistic_id or that
+      // entity_id can be used if HA resolves it.
+      // The call requires `statistic_ids` not `entity_ids`.
+
+      // ApexCharts-card attempts to find the correct statistic_id. Here, we'll simplify.
+      // If this._entityID is already a statistic_id, it might work.
+      // Otherwise, this might need adjustment based on how statistic_ids are formed/discovered.
+      const statisticsData = await this._hass.callWS<{
+        [statisticId: string]: StatisticValue[];
+      }>(callArgs);
+      return statisticsData && statisticsData[this._entityID]
+        ? statisticsData[this._entityID]
+        : [];
+    } catch (err) {
+      console.log("recorder/get_statistics_during_period error:", err);
+      return [];
+    }
+  }
+
   private async _generateData(
     start: Date,
     end: Date,
@@ -749,49 +787,6 @@ export class GraphEntry {
       }
     } catch (e: any) {
       return undefined;
-    }
-  }
-
-  private async _fetchStatistics(
-    start: Date,
-    end: Date,
-    period: string,
-  ): Promise<StatisticValue[]> {
-    if (!this._hass || !this._entityID) {
-      return [];
-    }
-    const callArgs = {
-      type: "recorder/get_statistics_during_period",
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      statistic_ids: [this._entityID], // This assumes _entityID is a valid statistic_id
-      period: period as any, // 'hour', 'day', 'month', '5minute'
-    };
-    try {
-      // First, get all statistic_ids to find the one matching our entity.
-      // This step can be skipped if we construct the statistic_id directly (e.g. sensor.energy_usage -> sensor.energy_usage_mean_statistics)
-      // However, the exact statistic_id format can vary.
-      // For simplicity, we'll assume the consumer of GraphEntry knows the correct statistic_id or that
-      // entity_id can be used if HA resolves it.
-      // The call requires `statistic_ids` not `entity_ids`.
-
-      // ApexCharts-card attempts to find the correct statistic_id. Here, we'll simplify.
-      // If this._entityID is already a statistic_id, it might work.
-      // Otherwise, this might need adjustment based on how statistic_ids are formed/discovered.
-      const statisticsData = await this._hass.callWS<{
-        [statisticId: string]: StatisticValue[];
-      }>({
-        type: "recorder/get_statistics_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        statistic_ids: [this._entityID], // This assumes _entityID is a valid statistic_id
-        period: period as any, // 'hour', 'day', 'month', '5minute'
-      });
-      return statisticsData && statisticsData[this._entityID]
-        ? statisticsData[this._entityID]
-        : [];
-    } catch (err) {
-      return [];
     }
   }
 
