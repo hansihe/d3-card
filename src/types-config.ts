@@ -23,11 +23,11 @@ interface D3CardSeriesConfigBase {
 // Define the structure for series configuration within D3Card
 export interface D3CardSeriesConfigEntity extends D3CardSeriesConfigBase {
   entity: string;
-  filter: never;
+  filter: undefined;
 }
 
 interface D3CardSeriesConfigFilter extends D3CardSeriesConfigBase {
-  entity: never;
+  entity: undefined;
   filter: Filter;
 }
 
