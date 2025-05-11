@@ -15,7 +15,6 @@ module.exports = {
         assets: "dist/*.js",
       },
     ],
-    "@qiwi/semantic-release-gh-pages-plugin",
   ],
   preset: "conventionalcommits",
   branches: [{ name: "main" }, { name: "dev", prerelease: true }],
