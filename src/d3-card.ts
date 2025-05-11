@@ -9,16 +9,12 @@ import {
   GraphEntry,
   ChartCardSeriesConfig as GraphEntrySeriesConfig,
 } from "./graphEntry";
-import {
-  D3CardConfig,
-  D3CardSeriesConfig,
-  D3CardSeriesConfigEntity,
-} from "./types-config";
-import { d3CardConfigSchema } from "./types-config-zod";
+import { CardConfig, SeriesConfig } from "./types-config";
+import { cardConfigSchema } from "./types-config-zod";
 import { Hass } from "./types-hass";
 
 export interface SeriesData {
-  config: D3CardSeriesConfig;
+  config: SeriesConfig;
   meta: Record<string, any>;
   state: any | null;
   transformedState: any | null;
@@ -32,7 +28,7 @@ type Value = number;
 export {}; // Make this file a module
 
 class D3Card extends HTMLElement {
-  private _config: D3CardConfig | null = null;
+  private _config: CardConfig | null = null;
   private _hass: Hass | null = null;
   private _svg: SVGSVGElement | null = null;
   private _cardElement: HTMLElement | null = null;
@@ -58,7 +54,7 @@ class D3Card extends HTMLElement {
   }
 
   setConfig(config: any) {
-    config = d3CardConfigSchema.parse(config);
+    config = cardConfigSchema.parse(config);
 
     this._config = {
       title: "",
@@ -115,6 +111,7 @@ class D3Card extends HTMLElement {
     if (this._config.series && oldHass) {
       for (const seriesConf of this._config.series) {
         if (
+          seriesConf.entity !== undefined &&
           hass.states[seriesConf.entity] !== oldHass.states[seriesConf.entity]
         ) {
           significantChange = true;
@@ -128,11 +125,11 @@ class D3Card extends HTMLElement {
     }
   }
 
-  async _processSeries(seriesConf: D3CardSeriesConfigEntity, index: number) {
+  async _processEntitySeries(seriesConf: SeriesConfig, index: number) {
     const hass = this._hass!;
     const cardConfig = this._config!;
 
-    const entityState = hass.states[seriesConf.entity];
+    const entityState = hass.states[seriesConf.entity!];
     let transformedState: any;
     let historyData: [number, number | null][] | null = null; // Match GraphEntry history type
     let error: string | null = null;
@@ -184,7 +181,7 @@ class D3Card extends HTMLElement {
           const groupByConfig = seriesConf.group_by ?? D3Card.DEFAULT_GROUP_BY;
 
           const geSeriesConfig: GraphEntrySeriesConfig = {
-            entity: seriesConf.entity,
+            entity: seriesConf.entity!,
             attribute: seriesConf.attribute,
             transform: seriesConf.transform, // GraphEntry will use this for its internal transformations
             group_by: groupByConfig,
@@ -266,8 +263,16 @@ class D3Card extends HTMLElement {
     // svg.selectAll("*").remove();
     // svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle").text("Loading history...");
 
-    const seriesPromises = (cardConfig.series || []).map((seriesConf, index) =>
-      this._processSeries(seriesConf, index),
+    const seriesPromises = (cardConfig.series || []).flatMap(
+      (seriesConf, index) => {
+        if (seriesConf.entity != undefined) {
+          return [this._processEntitySeries(seriesConf, index)];
+        }
+        if (seriesConf.filter !== undefined) {
+          return [];
+        }
+        throw "unreachable";
+      },
     );
 
     const seriesData: Array<SeriesData> = await Promise.all(seriesPromises);

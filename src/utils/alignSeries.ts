@@ -264,9 +264,8 @@ function applyExtrapolation(
 }
 
 /**
- * Aligns multiple time series to a common set of timestamps.
+ * Utility function wbich multiple time series to a common set of timestamps.
  *
- * @export
  * @param seriesList - An array of time series. Can contain null/undefined series.
  * @param userOptions - Options for alignment.
  * @returns An array where each item is [timestamp, series1_value, series2_value, ...]. Timestamps are sorted.
@@ -274,7 +273,8 @@ function applyExtrapolation(
 export default function alignSeries(
   seriesList: (Series | undefined | null)[],
   userOptions: AlignSeriesOptions = {},
-): AlignedTable {
+  // Type inlined for docs
+): [number, ...(number | null)[]][] {
   const options: RequiredAlignSeriesOptions = {
     ...DEFAULT_OPTIONS,
     ...userOptions,

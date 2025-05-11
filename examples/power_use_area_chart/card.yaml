@@ -1,0 +1,149 @@
+type: custom:d3-card
+title: Power Use History
+height: 250px
+series:
+  - entity: sensor.power_meter_han_power
+    transform: return parseFloat(x);
+    fetch_history:
+      span: 24h
+    meta:
+      role: total
+  - entity: sensor.thermostat_bathroom_power
+    transform: return parseFloat(x);
+    fetch_history:
+      span: 24h
+    meta:
+      role: part
+  - entity: sensor.energy_hot_water_power_a
+    transform: return parseFloat(x);
+    fetch_history:
+      span: 24h
+    meta:
+      role: part
+d3_code: |
+  // Specify the chart’s dimensions.
+  const width = size.width;
+  const height = size.height;
+  const marginTop = 20;
+  const marginRight = 20;
+  const marginBottom = 20;
+  const marginLeft = 50;
+
+  console.log(seriesData);
+
+  const base = seriesData.find((s) => s.meta.role == "total");
+  const parts = seriesData.filter((s) => s.meta.role == "part");
+
+  const aligned = utils.alignSeries(parts.map(
+    (series) => series.history));
+
+  // Determine the series that need to be stacked.
+  const series = d3
+    .stack()
+    .keys(parts.map((_, idx) => idx))
+    .value((d, key) => d[key + 1])(aligned);
+
+  // Prepare the scales for positional and color encodings.
+  const x = d3
+    .scaleUtc()
+    .domain(d3.extent(base.history, (d) => d[0]))
+    .range([marginLeft, width - marginRight]);
+
+  const y = d3
+    .scaleLinear()
+    //.domain([0, d3.max(series, (d) => d3.max(d, (d) => d[1]))])
+    .domain([0, d3.max(base.history, (d) => d[1])])
+    .rangeRound([height - marginBottom, marginTop]);
+
+  const color = d3
+    .scaleOrdinal()
+    .domain(series.map((d) => d.key))
+    .range(d3.schemeTableau10);
+
+  // Add the y-axis, remove the domain line,
+  // add grid lines and a label.
+  svg.selectAll("g.verticalAxes")
+    .data([null])
+    .join("g")
+      .attr("class", "verticalAxes")
+      .attr("transform", `translate(${marginLeft},0)`)
+      .call((g) => g.selectChildren().remove())
+      .call(d3.axisLeft(y).ticks(height / 80))
+      .call((g) =>
+        g
+          .selectAll(".tick line")
+          .clone()
+          .attr("x2", width - marginLeft - marginRight)
+          .attr("stroke-opacity", 0.1),
+      )
+      .call((g) =>
+        g
+          .append("text")
+          .attr("x", -marginLeft)
+          .attr("y", 10)
+          .attr("fill", "currentColor")
+          .attr("text-anchor", "start")
+          .text("↑ Power"),
+      );
+
+  /*utils.makeElement(svg, "g", "axes", g =>
+    g
+      .attr("transform", `translate(${marginLeft},0)`)
+      .call(s => s.selectChildren().remove())
+      .call(d3.axisLeft(y).ticks(height / 80))
+      .call((g) => g.select(".domain").remove())
+      .call((g) =>
+        g
+          .selectAll(".tick line")
+          .clone()
+          .attr("x2", width - marginLeft - marginRight)
+          .attr("stroke-opacity", 0.1),
+      )
+      .call((g) =>
+        g
+          .append("text")
+          .attr("x", -marginLeft)
+          .attr("y", 10)
+          .attr("fill", "currentColor")
+          .attr("text-anchor", "start")
+          .text("↑ Power"),
+      )
+  );*/
+
+  // Background (total) data area graph
+  svg.selectAll("path.baseSeries")
+    .data([base.history])
+    .join("path")
+      .attr("class", "baseSeries")
+      .attr("fill", "#ffffff55")
+      .attr("d",
+        d3
+          .area()
+          .x((d) => x(d[0]))
+          .y0((d) => y(d[1]))
+          .y1(y(0))
+          .curve(d3.curveStepAfter)
+      );
+
+  // Stacked individual device area graphs
+  svg.selectAll("path.parts")
+    .data(series)
+    .join("path")
+      .attr("class", "parts")
+      .attr("fill", (d) => color(d.key))
+      .attr("d",
+        d3
+          .area()
+          .x((d) => x(d.data[0]))
+          .y0((d) => y(d[0]))
+          .y1((d) => y(d[1]))
+          .curve(d3.curveStepAfter)
+      );
+
+  // Append the horizontal axis atop the area.
+  svg.selectAll("g.horizontalAxes")
+    .data([null])
+    .join("g")
+      .attr("class", "horizontalAxes")
+      .attr("transform", `translate(0,${height - marginBottom})`)
+      .call(d3.axisBottom(x).tickSizeOuter(0));

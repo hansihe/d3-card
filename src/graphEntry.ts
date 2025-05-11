@@ -8,10 +8,7 @@ const momentExtended = extendMoment(moment);
 
 import parseDuration from "parse-duration";
 import { deflate as pakoCompress, inflate as pakoDecompress } from "pako";
-import {
-  D3CardSeriesConfigGroupBy,
-  D3CardSeriesConfigStatistics,
-} from "./types-config";
+import { SeriesConfigGroupBy, SeriesConfigStatistics } from "./types-config";
 
 // Type definitions
 
@@ -42,8 +39,8 @@ export interface ChartCardSeriesConfig {
   type?: "line" | "area"; // Simplified
   transform?: string;
   unit_of_measurement?: string;
-  group_by: D3CardSeriesConfigGroupBy;
-  statistics?: D3CardSeriesConfigStatistics;
+  group_by: SeriesConfigGroupBy;
+  statistics?: SeriesConfigStatistics;
   fill_raw?: "null" | "last" | "zero";
   data_generator?: string;
   ignore_history?: boolean;
