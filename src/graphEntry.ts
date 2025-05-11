@@ -1,3 +1,5 @@
+// Adapted from https://github.com/RomRider/apexcharts-card (MIT)
+
 // External Libs
 import localforage from "localforage";
 import SparkMD5 from "spark-md5";
@@ -701,7 +703,7 @@ export class GraphEntry {
         ? historyData[this._entityID]
         : [];
     } catch (err) {
-      console.log("history/history_during_period error:", err);
+      console.error("history/history_during_period error:", err);
       return [];
     }
   }
@@ -739,7 +741,7 @@ export class GraphEntry {
         ? statisticsData[this._entityID]
         : [];
     } catch (err) {
-      console.log("recorder/get_statistics_during_period error:", err);
+      console.error("recorder/get_statistics_during_period error:", err);
       return [];
     }
   }

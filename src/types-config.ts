@@ -35,7 +35,26 @@ export interface CardConfig {
  * @category Config
  */
 export interface SeriesConfig {
+  /**
+   * Specifies a single entity ID which will be fetched as a series.
+   */
   entity?: string;
+
+  /**
+   * Specifies several entitiy IDs which will be fetched as series.
+   *
+   * This will result in multiple `SeriesData` being made available
+   * to `d3_code`, one for each specified entity.
+   */
+  entities?: string[];
+
+  /**
+   * Specifies dynamic filtering which will be expanded into zero
+   * or more entity IDs.
+   *
+   * This will result in multiple `SeriesData` being made available
+   * to `d3_code`, one for each specified entity.
+   */
   filter?: Filter;
 
   meta?: Record<string, any>;
@@ -60,10 +79,35 @@ export interface Filter {
 
 /**
  * @category Config
+ * @strict
  */
 export interface FilterEntry {
+  domain?: string;
   entity_id?: string;
+  state?: string;
+  name?: string;
+  group?: string;
   label?: string;
+
+  area?: string;
+  device?: string;
+  device_manufacturer?: string;
+  device_model?: string;
+
+  attributes?: Record<string, string>;
+
+  last_changed?: string | number;
+  last_updated?: string | number;
+  last_triggered?: string | number;
+
+  entity_category?: string;
+  integration?: string;
+  hidden_by?: string;
+
+  not?: FilterEntry;
+  or?: FilterEntry[];
+
+  type?: string;
 }
 
 /**

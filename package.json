@@ -3,8 +3,9 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
-    "build": "npm run build:types-check && typedoc && npm run rollup",
+    "build": "npm run build:types-check && npm run build:typedoc && npm run rollup",
     "build:types-check": "ts-to-zod src/types-config.ts src/types-config-zod.ts",
+    "build:typedoc": "typedoc",
     "rollup": "rollup -c",
     "test": "jest",
     "testbench": "rollup -c --watch"
@@ -24,7 +25,13 @@
       "includeCategories": true,
       "includeGroups": false,
       "excludeReferences": true
-    }
+    },
+    "blockTags": [
+      "@strict",
+      "@category",
+      "@param",
+      "@returns"
+    ]
   },
   "devDependencies": {
     "@qiwi/semantic-release-gh-pages-plugin": "^5.4.3",
@@ -46,6 +53,7 @@
   },
   "dependencies": {
     "d3": "^7.9.0",
+    "d3-sankey": "^0.12.3",
     "localforage": "^1.10.0",
     "moment": "^2.29.4",
     "moment-range": "^4.0.2",

@@ -4,6 +4,7 @@ import { DEBUG_MODE } from "./constants";
 import * as d3util from "./utils/d3";
 import { parseHistorySpanToMs } from "./utils/date";
 import alignSeries from "./utils/alignSeries";
+import { getFilter } from "./utils/entityFilter";
 
 import {
   GraphEntry,
@@ -125,7 +126,10 @@ class D3Card extends HTMLElement {
     }
   }
 
-  async _processEntitySeries(seriesConf: SeriesConfig, index: number) {
+  async _processEntitySeries(
+    seriesConf: SeriesConfig,
+    index: number,
+  ): Promise<SeriesData> {
     const hass = this._hass!;
     const cardConfig = this._config!;
 
@@ -245,6 +249,60 @@ class D3Card extends HTMLElement {
     };
   }
 
+  async _processSeriesConfig(
+    seriesConf: SeriesConfig,
+    index: number,
+  ): Promise<Array<SeriesData>> {
+    let entities: Set<string> = new Set();
+
+    if (seriesConf.entity !== undefined) entities.add(seriesConf.entity);
+
+    if (seriesConf.entities !== undefined)
+      seriesConf.entities.forEach((entity) => entities.add(entity));
+
+    let filter = seriesConf.filter;
+    if (filter) {
+      let allEntities = Object.keys(this._hass!.states);
+
+      if (filter.include) {
+        let includeFilters = await Promise.all(
+          filter.include.map((v) => getFilter(this._hass!, v)),
+        );
+
+        let includedEntities = allEntities.filter((entity) =>
+          includeFilters.some((f) => f(entity)),
+        );
+
+        includedEntities.forEach((entity) => entities.add(entity));
+      }
+      if (filter.exclude) {
+        let excludeFilters = await Promise.all(
+          filter.exclude.map((v) => getFilter(this._hass!, v)),
+        );
+
+        let excludedEntities = allEntities.filter((entity) =>
+          excludeFilters.some((f) => f(entity)),
+        );
+
+        excludedEntities.forEach((entity) => entities.delete(entity));
+      }
+    }
+
+    let seriesPromises = Array.from(entities).map((entity) =>
+      this._processEntitySeries(
+        {
+          ...seriesConf,
+          entity: entity,
+          entities: undefined,
+          filter: undefined,
+        },
+        index,
+      ),
+    );
+
+    return await Promise.all(seriesPromises);
+  }
+
   async _updateD3Visualization() {
     if (!this._hass || !this._config || !this._cardElement) return;
 
@@ -263,19 +321,13 @@ class D3Card extends HTMLElement {
     // svg.selectAll("*").remove();
     // svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle").text("Loading history...");
 
-    const seriesPromises = (cardConfig.series || []).flatMap(
-      (seriesConf, index) => {
-        if (seriesConf.entity != undefined) {
-          return [this._processEntitySeries(seriesConf, index)];
-        }
-        if (seriesConf.filter !== undefined) {
-          return [];
-        }
-        throw "unreachable";
-      },
+    const seriesPromises = (cardConfig.series || []).map((seriesConf, index) =>
+      this._processSeriesConfig(seriesConf, index),
     );
 
-    const seriesData: Array<SeriesData> = await Promise.all(seriesPromises);
+    const seriesData: Array<SeriesData> = (
+      await Promise.all(seriesPromises)
+    ).flat();
 
     // Setup layout variables
     const cardClientWidth = cardElement.getBoundingClientRect().width;
